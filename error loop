@@ -1,0 +1,146 @@
+<?php
+$fetch_check=mysql_fetch_assoc(mysql_query("select * from ".$prev."booking_details where transaction_id='".$_REQUEST['transaction_id']."'"));
+if($fetch_check['booking_result']=='' && $fetch_check['pnr']=='' && $fetch_check['ticket_number']=='' && $fetch_check['booking_ref']==''){
+if(isset($_REQUEST['track_id'])){	
+	$fetch_api=mysql_fetch_assoc(mysql_query("select * from ".$prev."flightapi_setting where id=1;"));
+	$fetch_pax_details=mysql_fetch_assoc(mysql_query("select * from ".$prev."passenger_details where transaction_id='".$_REQUEST['transaction_id']."' order by pax_seq_number asc"));
+	$p_mob=$fetch_pax_details['p_phone'];
+	$p_email=$fetch_pax_details['p_email'];
+	$pub_fare=$fetch_check['pub_fare'];
+	$total_fare=$fetch_check['total_fare'];
+	$fetch_pax=mysql_query("select * from ".$prev."passenger_details where transaction_id='".$_REQUEST['transaction_id']."' order by pax_seq_number asc");
+	$fetch_flight=mysql_query("select * from ".$prev."airline_details where transaction_id='".$_REQUEST['transaction_id']."' order by airline_seq_number asc");
+$i=1;
+    while($row=mysql_fetch_assoc($fetch_pax))
+    {
+        $p_seq[$i] = $row['pax_seq_number'];
+        $p_tit[$i] = $row['p_title'];
+        $p_fst[$i] = $row['p_firstname'];
+        $p_lst[$i] = $row['p_lastname'];
+        $p_typ[$i] = $row['pax_type'];
+        $p_dob[$i] = $row['p_dob'];
+        $i++;
+    }
+  $j=1;
+    while($result=mysql_fetch_assoc($fetch_flight))
+    {
+        $a_trk[$j] = $result['airline_trck_number'];
+        $a_seq[$j] = $result['airline_seq_number'];
+        $a_nam[$j] = $result['airline_name'];
+        $a_num[$j] = $result['airline_no'];
+        $af_ar[$j] = $result['from_airport'];
+        $at_ar[$j] = $result['to_airport'];
+        $a_dat[$j] = $result['deperture_date'];
+        $a_tim[$j] = $result['deperture_time'];
+        $a_ard[$j] = $result['arrival_date'];
+        $a_art[$j] = $result['arrival_time'];
+        $a_cls[$j] = $result['airline_class'];
+        $a_mcs[$j] = $result['main_class'];
+        $j++;
+    } 
+   // Loop through the results from the database
+ echo '<b>Our Parameters:</b><br>';
+   for ($i = 1; $i <=count($p_seq); $i++) 
+    {
+    // Show entries
+       echo 	'PaxSeqNo '.$p_seq[$i].'';
+       echo     ' Title '.$p_tit[$i].'';
+       echo     ' Fname '.$p_fst[$i].'';
+       echo     ' Lname '.$p_lst[$i].'';
+       echo	' Paxtype  '.$p_typ[$i].'';
+       echo	' DOB ' .$p_dob[$i].'';
+       echo	'<br>';
+    }
+    for ($j = 1; $j <=count($a_seq); $j++) 
+    {
+	echo 	'Track '.$a_trk[$j].'';
+	echo 	' SegmentSeqNo '.$a_seq[$j].'';
+	echo	' AirlineCode '.$a_nam[$j].'';
+	echo	' FlightNo '.$a_num[$j].'';
+	echo	' From '.$af_ar[$j].'';
+	echo	' To '.$at_ar[$j].'';
+	echo	' DepDate '.$a_dat[$j].'';
+	echo	' DepTime '.$a_tim[$j].'';
+	echo	' ArrDate '.$a_ard[$j].'';
+	echo	' ArrTime '.$a_art[$j].'';
+	echo	' FlightClass '.$a_cls[$j].'';
+	echo	' MainClass '.$a_mcs[$j].''; 
+	echo	'<br>';
+    }
+	$production_url=$fetch_api['production_url'];
+	$interface_code=$fetch_api['interface_code'];
+	$interface_authkey=$fetch_api['interface_authkey'];
+	$agent_code=$fetch_api['agent_code']; 
+	$password=$fetch_api['password'];
+	$merchant_code=$fetch_api['merchant_code'];
+	$staging_key=$fetch_api['staging_key'];
+	$staging_salt=$fetch_api['staging_salt'];
+  $ch = curl_init();
+  curl_setopt( $ch, CURLOPT_URL, $production_url );
+  curl_setopt( $ch, CURLOPT_POST, true );
+  curl_setopt( $ch, CURLOPT_HTTPHEADER, array('Content-Type: text/xml'));
+  curl_setopt( $ch, CURLOPT_RETURNTRANSFER, true );
+  curl_setopt( $ch, CURLOPT_POSTFIELDS, '<?xml version="1.0"?>
+<soap:Envelope xmlns:tem="http://tempuri.org/" xmlns:soap="http://www.w3.org/2003/05/soap-envelope">
+<soap:Header>
+<tem:Authenticate>
+<tem:InterfaceCode>'.$interface_code.'</tem:InterfaceCode>
+<!--Optional:-->
+<tem:InterfaceAuthKey>'.$interface_authkey.'</tem:InterfaceAuthKey>
+<!--Optional:-->
+<tem:AgentCode>'.$agent_code.'</tem:AgentCode>
+<!--Optional:-->
+<tem:Password>'.$password.'</tem:Password>
+</tem:Authenticate>
+</soap:Header>
+<soap:Body>
+<tem:BookTicket>
+<!--Optional:-->
+<tem:strRequestXML><![CDATA[<BookTicketRequest> 
+<TrackNo>'.$_REQUEST['track_id'].'</TrackNo> 
+<MobileNo>'.$p_mob.'</MobileNo>
+<AltMobileNo></AltMobileNo> 
+<Email>'.$p_email.'</Email> 
+<Address></Address>
+<Passengers><?php for ($i = 1; $i <=count($p_seq); $i++){ ?><Passenger>
+<PaxSeqNo>'.$p_seq[$i].'</PaxSeqNo> 
+<Title>'.$p_tit[$i].'</Title> 
+<FirstName>'.$p_fst[$i].'</FirstName> 
+<LastName>'.$p_lst[$i].'</LastName>
+<PassengerType>'.$p_typ[$i].'</PassengerType> 
+<DateOfBirth>'.$p_dob[$i].'</DateOfBirth>
+<FrequentFlyerNo></FrequentFlyerNo>
+</Passenger><?php } ?></Passengers>
+<Segments><?php for ($j = 1; $j <=count($a_seq); $j++) 
+{ ?><Segment>
+<TrackNo>'.$a_trk[$j].'</TrackNo>
+<SegmentSeqNo>'.$a_seq[$j].'</SegmentSeqNo>
+<AirlineCode>'.$a_nam[$j].'</AirlineCode>
+<FlightNo>'.$a_num[$j].'</FlightNo>
+<FromAirportCode>'.$af_ar[$j].'</FromAirportCode>
+<ToAirportCode>'.$at_ar[$j].'</ToAirportCode>
+<DepDate>'.$a_dat[$j].'</DepDate>
+<DepTime>'.$a_tim[$j].'</DepTime> 
+<ArrDate>'.$a_ard[$j].'</ArrDate> 
+<ArrTime>'.$a_art[$j].'</ArrTime> 
+<FlightClass>'.$a_cls[$j].'</FlightClass> 
+<MainClass>'.$a_mcs[$j].'</MainClass>
+</Segment><?php } ?></Segments>
+<TotalAmount>'.$_REQUEST['total_amount'].'</TotalAmount> 
+<MerchantCode>'.$merchant_code.'</MerchantCode> 
+<MerchantKey>'.$staging_key.'</MerchantKey> 
+<SaltKey>'.$staging_salt.'</SaltKey> 
+<IsTicketing>Yes</IsTicketing> 
+</BookTicketRequest>]]>
+</tem:strRequestXML>
+</tem:BookTicket>
+</soap:Body>
+</soap:Envelope>' );
+$result = curl_exec($ch);
+curl_close($ch);
+echo '<b>Booking Response:</b><br>';
+$booking_result=var_dump($result);
+echo $booking_result;
+echo '<br><br>';
+}
+?>
